@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雨泪</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            touch-action: manipulation; 
+        }
+
+        /* 1. 背景层 (P1) */
+        #bg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://file.uhsea.com/2512/3858bf6b9173235064a7485607d6b22dGL.jpg');
+            background-position: center;
+            background-size: 100% 100%; 
+            background-repeat: no-repeat;
+            z-index: 1;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            display: block;
+        }
+
+        /* === 3. 水印层 === */
+        #watermark-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* 背景模糊文字块 - 颜色同步调整为淡圆珠笔蓝 */
+        .wm-bg-text {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(38, 70, 182, 0.25); /* #2646B6 的淡化版 */
+            padding: 20px;
+            text-align: justify;
+            filter: blur(1.5px);
+            z-index: -1;
+            opacity: 0.6;
+            word-break: break-all;
+        }
+
+        /* 主标题容器 */
+        .wm-main {
+            text-align: center;
+            mix-blend-mode: normal; 
+        }
+
+        /* 
+           核心修改：圆珠笔质感
+           颜色 #2646B6
+        */
+        .pencil-texture {
+            /* 1. 颜色修改：圆珠笔蓝 */
+            color: #2646B6;
+            
+            /* 2. 不透明度：100% */
+            opacity: 1;
+            
+            /* 3. 字体配置 */
+            font-family: 'SimSun', '宋体', serif;
+            font-weight: bold;
+
+            /* 4. SVG 滤镜：制造书写纹理 */
+            filter: url(#ballpoint-filter);
+        }
+
+        /* 英文标题 */
+        .wm-en {
+            font-size: clamp(30px, 7vw, 80px);
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.3; 
+            gap: 5px;
+        }
+
+        /* 中文标题 */
+        .wm-cn {
+            font-size: clamp(40px, 8vw, 90px);
+            letter-spacing: 0.8em; 
+            text-indent: 0.8em;
+        }
+
+        /* === 2. 加载层样式 === */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease-out;
+        }
+
+        .loader-ring {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #ffffff; 
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            box-shadow: 
+                0 0 15px rgba(255, 255, 255, 0.9),
+                0 0 30px rgba(255, 255, 255, 0.6),
+                0 0 50px rgba(255, 255, 255, 0.4); 
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            color: #ffffff; 
+            font-size: 16px;
+            letter-spacing: 2px;
+            font-weight: bold;
+            font-family: 'SimSun', '宋体', serif; 
+            animation: pulse 1.5s ease-in-out infinite;
+            text-shadow: 
+                0 0 8px rgba(255, 255, 255, 0.9),
+                0 0 15px rgba(255, 255, 255, 0.6);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .svg-defs {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SVG 滤镜：制造圆珠笔纹理 -->
+    <svg class="svg-defs">
+        <defs>
+            <filter id="ballpoint-filter" x="-20%" y="-20%" width="140%" height="140%">
+                <!-- 
+                    相比铅笔，圆珠笔油墨更粘稠，稍微降低频率 
+                    baseFrequency 0.9 -> 0.6 (纹理更像油墨堆积而非粉末)
+                -->
+                <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
+                
+                <!-- 边缘置换 -->
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="displaced" />
+                
+                <!-- 内部镂空（模拟书写留白/飞白） -->
+                <feComposite operator="in" in="displaced" in2="noise" result="textured" />
+                
+                <!-- 增强对比，让颜色更实 -->
+                <feComponentTransfer in="textured">
+                    <feFuncA type="linear" slope="1.8" intercept="0" />
+                </feComponentTransfer>
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="bg-layer"></div>
+    <canvas id="myCanvas"></canvas>
+    
+    <!-- 水印层 -->
+    <div id="watermark-layer">
+        <div class="wm-bg-text">
+            I've seen things you people wouldn't believe. Attack ships on fire off the shoulder of Orion. I watched C-beams glitter in the dark near the Tannhäuser Gate. All those moments will be lost in time, like tears in rain. Time to die. When twilight draped the battlements, Prince Alaric stood alone upon the ivy stone. His cloak, tattered by storm and grief, whispered of battles now but cinders. Within the palace, Lady Seraphine languished beneath silken drapes, her breath a fragile thread. Physicians spoke in trembling murmurs of a wasting curse no mortal art could quell.
+            The sky above the port was the color of television, tuned to a dead channel. It was a bright cold day in April, and the clocks were striking thirteen.
+            I've seen things you people wouldn't believe. Attack ships on fire off the shoulder of Orion. I watched C-beams glitter in the dark near the Tannhäuser Gate. All those moments will be lost in time, like tears in rain. Time to die.
+        </div>
+        
+        <!-- 主标题 -->
+        <div class="wm-main">
+            <div class="wm-en pencil-texture">
+                <span>Tears in</span>
+                <span>the Rain</span>
+            </div>
+            <div class="wm-cn pencil-texture">雨 泪</div>
+        </div>
+    </div>
+
+    <!-- 加载界面 -->
+    <div id="loading-screen">
+        <div class="loader-ring"></div>
+        <div class="loading-text">下雨中......</div>
+    </div>
+
+    <!-- 背景音乐 -->
+    <audio id="bgm" loop>
+        <source src="https://file.uhsea.com/2512/c635ab90323fc288f9dec657a956178fDS.mp3" type="audio/mpeg">
+    </audio>
+
+<script>
+    const canvas = document.getElementById('myCanvas');
+    const ctx = canvas.getContext('2d');
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingText = document.querySelector('.loading-text');
+    const bgm = document.getElementById('bgm');
+
+    // P2: UZ.jpg
+    const imgUrlP2 = 'https://file.uhsea.com/2512/12d42de43534ac5a4c1903bb7db9f076UZ.jpg';
+
+    let width, height;
+    let curves = [];
+    let lastSpawnTime = 0;
+    let nextSpawnInterval = 0;
+    
+    let imgP2 = new Image();
+    let pattern = null;
+
+    imgP2.src = imgUrlP2;
+
+    imgP2.onload = () => {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(() => {
+            init(); 
+        }, 500);
+    };
+
+    imgP2.onerror = () => {
+        loadingText.innerText = "资源加载失败";
+        loadingText.style.color = "#ff3333";
+        document.querySelector('.loader-ring').style.borderColor = "#ff3333";
+        setTimeout(() => {
+            loadingScreen.classList.add('fade-out');
+            init();
+        }, 2000);
+    };
+
+    function init() {
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // 双击重置画布
+        window.addEventListener('dblclick', () => {
+            ctx.clearRect(0, 0, width, height);
+            curves = [];
+        });
+
+        // 单击播放音乐
+        window.addEventListener('click', () => {
+            if (bgm.paused) {
+                bgm.play().catch(error => {
+                    console.log("播放被拦截:", error);
+                });
+            }
+        });
+        
+        requestAnimationFrame(animate);
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        if (imgP2.complete && imgP2.naturalWidth !== 0) {
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = width;
+            offCanvas.height = height;
+            const offCtx = offCanvas.getContext('2d');
+
+            // 强制拉伸 P2 以适应屏幕
+            offCtx.drawImage(imgP2, 0, 0, width, height);
+            pattern = ctx.createPattern(offCanvas, 'no-repeat');
+        }
+    }
+
+    class Curve {
+        constructor() {
+            this.x = Math.random() * width;
+            this.y = 0;
+            this.lineWidth = Math.random() * (12 - 8) + 8;
+            this.isDead = false;
+        }
+
+        update() {
+            if (this.y > height + 20) {
+                this.isDead = true;
+                return;
+            }
+
+            const prevX = this.x;
+            const prevY = this.y;
+
+            this.y += 2; 
+            this.x += (Math.random() * 2) - 1;
+
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(this.x, this.y);
+            
+            ctx.lineWidth = this.lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            if (pattern) {
+                ctx.strokeStyle = pattern;
+            } else {
+                ctx.strokeStyle = '#ffffff'; 
+            }
+            
+            ctx.stroke();
+        }
+    }
+
+    function animate(timestamp) {
+        if (!lastSpawnTime) lastSpawnTime = timestamp;
+        
+        if (timestamp - lastSpawnTime > nextSpawnInterval) {
+            curves.push(new Curve());
+            lastSpawnTime = timestamp;
+            nextSpawnInterval = Math.random() * (800 - 400) + 400;
+        }
+
+        for (let i = curves.length - 1; i >= 0; i--) {
+            const curve = curves[i];
+            curve.update();
+            if (curve.isDead) {
+                curves.splice(i, 1);
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圣诞快乐！！</title>
+    <style>
+        /* 字体引用 */
+        @import url('https://gs.jurieo.com/gemini/fonts-googleapis/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@400;700&display=swap');
+
+        body {
+            margin: 0; overflow: hidden; background-color: #050505;
+            font-family: 'Cinzel', 'Noto Serif SC', serif;
+            user-select: none; -webkit-user-select: none; touch-action: none; 
+        }
+
+        /* --- [新增] 创意加载页样式 --- */
+        #loader-wrapper {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #050505; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 1s ease-out, visibility 1s;
+        }
+        .loader-container { position: relative; width: 200px; display: flex; flex-direction: column; align-items: center; }
+        .loader-ornament {
+            width: 80px; height: 80px; border: 2px solid #D4AF37; border-radius: 50%;
+            position: relative; box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+            overflow: hidden; animation: swing 3s ease-in-out infinite; transform-origin: top center; margin-bottom: 30px;
+        }
+        .loader-ornament::after { content: ''; position: absolute; top: -5px; left: 50%; width: 2px; height: 15px; background: #D4AF37; transform: translateX(-50%); }
+        .loader-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, #D4AF37, #FFFDD0); height: 0%; transition: height 0.4s ease-out; box-shadow: 0 0 15px #D4AF37; }
+        .loader-text { color: #D4AF37; font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 4px; text-transform: uppercase; text-align: center; }
+        .loader-percentage { font-size: 1.2rem; font-weight: 700; margin-top: 8px; display: block; }
+        #enter-btn {
+            margin-top: 40px; padding: 12px 30px; background: transparent; border: 1px solid #D4AF37; color: #D4AF37;
+            cursor: pointer; font-family: 'Cinzel', serif; font-size: 0.9rem; letter-spacing: 2px;
+            opacity: 0; transform: translateY(20px); transition: all 0.5s ease; pointer-events: none; outline: none;
+        }
+        #enter-btn.ready { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        #enter-btn:hover { background: #D4AF37; color: #050505; box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+        @keyframes swing { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+        .loader-quotes { position: absolute; bottom: 60px; color: rgba(255, 253, 208, 0.4); font-size: 0.75rem; font-family: 'Noto Serif SC', serif; letter-spacing: 1px; text-align: center; }
+
+        /* 主UI渐显控制 */
+        #top-left-ui, #bottom-left-ui, #hud-container, #hud-santa-hat, #signature-sticker {
+            opacity: 0; transition: opacity 1.5s ease;
+        }
+        .app-visible #top-left-ui, .app-visible #bottom-left-ui, .app-visible #hud-container, 
+        .app-visible #hud-santa-hat, .app-visible #signature-sticker { opacity: 1; }
+
+        /* --- UI 样式 --- */
+        #top-left-ui {
+            position: absolute; top: 25px; left: 25px; z-index: 10;
+            color: #D4AF37; pointer-events: none;
+            display: flex; flex-direction: column; gap: 10px;
+            max-width: 400px;
+            transition: all 0.3s;
+        }
+        
+        h1 { margin: 0; font-size: 2.4rem; text-shadow: 0 0 20px rgba(212, 175, 55, 0.6); font-weight: 700; line-height: 1.1; }
+        .subtitle { margin: 0; color: #FFFDD0; font-size: 0.9rem; letter-spacing: 2px; opacity: 0.9; margin-bottom: 4px; }
+        
+        .controls-box { display: flex; flex-direction: column; gap: 6px; }
+        
+        /* --- 操作面板 --- */
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.5); 
+            border-left: 2px solid #D4AF37; 
+            padding: 6px 10px;
+            border-radius: 0 4px 4px 0;
+            backdrop-filter: blur(2px);
+        }
+
+        .panel-title {
+            font-size: 0.75rem; 
+            color: #D4AF37; 
+            font-weight: 700;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding-bottom: 2px;
+        }
+
+        .instruction-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            column-gap: 5px; 
+            row-gap: 3px;    
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.65rem;
+            color: #FFFDD0;
+            white-space: nowrap; 
+            line-height: 1.4;
+        }
+
+        .control-icon {
+            display: inline-block;
+            width: 14px;
+            text-align: center;
+            margin-right: 2px;
+            font-size: 0.75rem; 
+        }
+
+        .control-text { opacity: 0.9; }
+        
+        /* --- 替换：上传花环按钮 (URL) --- */
+        #upload-btn { 
+            pointer-events: auto; 
+            align-self: flex-start; 
+            margin-top: 15px;
+            width: 70px;
+            height: 70px;
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27); 
+            background: url('https://file.uhsea.com/2512/d44bdd846b50d2d0489eef7723d646380Q.png') no-repeat center center;
+            background-size: contain;
+            filter: drop-shadow(0 4px 5px rgba(0,0,0,0.5)); 
+            position: relative;
+        }
+        
+        #upload-btn:hover {
+            transform: scale(1.15) rotate(10deg);
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+        }
+        
+        #upload-btn:active {
+            transform: scale(0.9) rotate(0deg);
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+        }
+
+        #upload-input { display: none; }
+
+        /* --- [新增/修改] 侧边贴图交互样式 --- */
+        .side-sticker {
+            width: 40px; 
+            height: auto;
+            align-self: flex-start; 
+            filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4));
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
+            pointer-events: auto; 
+            cursor: pointer;
+            opacity: 0.7; 
+            z-index: 50;
+            margin-left: 10px;
+        }
+
+        /* 默认状态：隐藏一半在左侧边缘 */
+        .sticker-p1 {
+            transform: translateX(-45px) rotate(-8deg);
+            margin-top: 55px; 
+        }
+
+        .sticker-p2 {
+            transform: translateX(-45px) rotate(6deg);
+            margin-top: 10px; 
+        }
+
+        /* 悬停状态 */
+        .side-sticker:hover {
+            opacity: 1;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+        }
+
+        /* 激活状态：完全展示 */
+        .side-sticker.active {
+            transform: translateX(10px) rotate(0deg) scale(1.8); 
+            opacity: 1;
+            z-index: 100;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.6));
+        }
+
+        /* --- 签名贴图交互样式 --- */
+        #signature-sticker {
+            position: absolute;
+            top: 60px;
+            right: 35px;
+            width: 250px; 
+            height: auto;
+            z-index: 10;
+            pointer-events: auto; 
+            cursor: pointer;      
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+            opacity: 0.95;
+            transform: rotate(3deg);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27);
+        }
+
+        #signature-sticker:hover {
+            transform: scale(1.1) rotate(8deg); 
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.4));
+        }
+
+        #signature-sticker:active {
+            transform: scale(0.95) rotate(3deg);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+
+        /* --- 聊天气泡样式 --- */
+        #chat-bubble {
+            position: absolute;
+            top: 200px; 
+            right: 300px; 
+            width: 400px; 
+            height: auto;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0;
+            transform-origin: top right;
+            transform: scale(0.5) rotate(-10deg);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        #chat-bubble.visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+            pointer-events: auto;
+        }
+
+        /* --- 播放器 --- */
+        #bottom-left-ui { 
+            position: absolute; bottom: 30px; left: 30px; 
+            z-index: 10; width: 260px; pointer-events: none; 
+            transition: all 0.3s;
+        }
+        
+        .music-player-modern { 
+            pointer-events: auto; 
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            box-shadow: none;
+            border: none;
+            padding: 10px; 
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .song-info { 
+            text-align: center; margin-bottom: 12px; font-size: 0.9rem; font-weight: 500;
+            color: rgba(255, 255, 255, 0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8); 
+        }
+
+        /* --- 进度条容器 --- */
+        .progress-container-modern { 
+            width: 100%; 
+            height: 6px; 
+            background: rgba(255, 255, 255, 0.2); 
+            cursor: pointer; 
+            margin: 15px 0 20px; 
+            border-radius: 3px; 
+            position: relative;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); 
+        }
+
+        /* --- 替换：雪地进度条 (URL) --- */
+        .progress-bar-modern { 
+            height: 100%; 
+            background-image: url('https://file.uhsea.com/2512/aa14260684c89659e4fde3bada020e8cB3.jpg');
+            background-repeat: repeat-x;
+            background-size: auto 100%;
+            width: 0%; 
+            border-radius: 3px; 
+            position: relative; 
+            filter: brightness(1.1) contrast(1.1);
+        }
+
+        /* --- 麋鹿雪橇进度指示器 --- */
+        #progress-sleigh {
+            position: absolute;
+            top: 50%;
+            left: 0%; 
+            transform: translate(-50%, -50%); 
+            width: 60px; 
+            height: auto;
+            pointer-events: none; 
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+            z-index: 10;
+        }
+
+        .progress-knob { display: none; }
+
+        .time-labels { 
+            display: flex; justify-content: space-between; font-size: 0.7rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 15px; font-weight: 400; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .player-controls-modern { 
+            display: flex; justify-content: center; align-items: center; gap: 40px; 
+        }
+
+        .control-icon-btn { 
+            background: none; border: none; color: #FFFFFF; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5)); 
+        }
+        
+        .control-icon-btn:hover { opacity: 0.8; }
+        .control-icon-btn svg { width: 28px; height: 28px; fill: currentColor; }
+        .play-btn-modern svg { width: 42px; height: 42px; }
+
+        /* --- HUD (预览框) --- */
+        #hud-container {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 200px; height: 150px;
+            border: 2px solid #D4AF37; background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            z-index: 10; overflow: hidden; border-radius: 6px;
+            transition: all 0.3s;
+        }
+        #hud-video, #hud-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; transform: scaleX(-1);
+        }
+        #hud-status {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(0,0,0,0.7); 
+            color: #FFFFFF; 
+            font-size: 9px; 
+            font-family: sans-serif;
+            text-align: center; padding: 3px 0;
+            pointer-events: none; z-index: 20;
+            letter-spacing: 1px;
+        }
+
+        /* --- 替换：HUD上的圣诞帽 (URL) --- */
+        #hud-santa-hat {
+            position: absolute;
+            bottom: 155px; right: 190px;
+            width: 70px; height: auto;
+            z-index: 25; pointer-events: none;
+            transform: rotate(-20deg);
+            filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.5)); 
+        }
+
+        #status-msg {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #FFFDD0;
+            font-size: 1rem; text-align: center; pointer-events: none;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5); opacity: 0; transition: opacity 0.5s;
+            font-family: 'Cinzel', serif; letter-spacing: 3px; width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader-wrapper">
+        <div class="loader-container">
+            <div class="loader-ornament">
+                <div class="loader-fill" id="loader-fill"></div>
+            </div>
+            <div class="loader-text">
+                Gathering Magic...
+                <span class="loader-percentage" id="loader-perc">0%</span>
+            </div>
+            <button id="enter-btn">Unwrap the Season</button>
+        </div>
+        <div class="loader-quotes" id="loader-quote">正在系上圣诞结...</div>
+    </div>
+
+    <div id="top-left-ui">
+        <h1>Merry Christmas</h1>
+        <p class="subtitle">至此，这个十二月系上圣诞结。</p>
+        <div class="controls-box">
+            <div class="controls-panel">
+                <div class="panel-title">🖱️ 鼠标控制</div>
+                <div class="instruction-grid">
+                    <div class="control-item"><span class="control-icon">⚡</span><span class="control-text">双击(扩散)</span></div>
+                    <div class="control-item"><span class="control-icon">✨</span><span class="control-text">三击(祝福)</span></div>
+                    <div class="control-item"><span class="control-icon">👆</span><span class="control-text">单击(切图)</span></div>
+                </div>
+            </div>
+            <div class="controls-panel">
+                <div class="panel-title">✋ 手势互动</div>
+                <div class="instruction-grid">
+                    <div class="control-item"><span class="control-icon">👊🏻</span><span class="control-text">聚合</span></div>
+                    <div class="control-item"><span class="control-icon">👋🏻</span><span class="control-text">扩散</span></div>
+                    <div class="control-item"><span class="control-icon">☝🏻</span><span class="control-text">画廊</span></div>
+                    <div class="control-item"><span class="control-icon">✌🏻</span><span class="control-text">祝福</span></div>
+                    <div class="control-item"><span class="control-icon">👌🏻</span><span class="control-text">切图</span></div>
+                </div>
+            </div>
+        </div>
+        <label for="upload-input" id="upload-btn" title="点击上传照片"></label>
+        <input type="file" id="upload-input" multiple accept="image/*">
+        
+        <img src="https://file.uhsea.com/2512/b26abb207698390c6c286fe67cedd77eXI.png" id="sticker-p1" class="side-sticker sticker-p1" alt="Sticker P1">
+        <img src="https://file.uhsea.com/2512/d1d348f6c3c3e1e0a310f9169afeb4abQE.png" id="sticker-p2" class="side-sticker sticker-p2" alt="Sticker P2">
+    </div>
+
+    <img id="signature-sticker" src="https://file.uhsea.com/2512/347d0ace14bbac485e7ea71a26793ff6EK.png" alt="Signature Sticker">
+    <img id="chat-bubble" src="https://file.uhsea.com/2512/b1e5467af04dc0184049b64af384a0bdT9.png" alt="Chat Bubble">
+
+    <div id="bottom-left-ui">
+        <div class="music-player-modern">
+            <div class="song-info" id="song-title">Loading...</div>
+            <div class="progress-container-modern" id="progress-container">
+                <div class="progress-bar-modern" id="progress-bar">
+                    <div class="progress-knob"></div> 
+                </div>
+                <img id="progress-sleigh" src="https://file.uhsea.com/2512/b69d414b16f003d052f1af48d3418eaeMH.png" alt="Progress Sleigh">
+            </div>
+            <div class="time-labels"><span id="current-time">00:00</span><span id="total-duration">00:00</span></div>
+            <div class="player-controls-modern">
+                <button class="control-icon-btn" id="prev-btn">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                </button>
+                <button class="control-icon-btn play-btn-modern" id="play-btn">
+                    <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pause-icon" style="display: none;" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="control-icon-btn" id="next-btn">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
+            </div>
+            <audio id="audio" loop autoplay playsinline></audio>
+        </div>
+    </div>
+
+    <div id="status-msg">FOCUS MODE</div>
+
+    <div id="hud-container">
+        <video id="hud-video" playsinline muted autoplay></video>
+        <canvas id="hud-canvas"></canvas>
+        <div id="hud-status">AI初始化...</div>
+    </div>
+    <img id="hud-santa-hat" src="https://file.uhsea.com/2512/f8b9b9d23810f3f5af453424afde0a3b27.png" alt="Santa Hat">
+
+    <script src="js/three.min.js"></script>
+    <script src="js/tween.umd.js"></script>
+    <script src="js/EffectComposer.js"></script>
+    <script src="js/RenderPass.js"></script>
+    <script src="js/ShaderPass.js"></script>
+    <script src="js/CopyShader.js"></script>
+    <script src="js/LuminosityHighPassShader.js"></script>
+    <script src="js/UnrealBloomPass.js"></script>
+    <script src="js/camera_utils.js"></script>
+    <script src="js/control_utils.js"></script>
+    <script src="js/drawing_utils.js"></script>
+    <script src="js/hands.js"></script>
+
+    <script>
+        // ==========================================
+        // [新增] 加载逻辑 (不改动原有逻辑)
+        // ==========================================
+        function initLoader() {
+            const fill = document.getElementById('loader-fill');
+            const percText = document.getElementById('loader-perc');
+            const wrapper = document.getElementById('loader-wrapper');
+            const enterBtn = document.getElementById('enter-btn');
+            const quote = document.getElementById('loader-quote');
+            const quotes = ["正在收集飘落的雪花...", "正在为圣诞树挂上灯串...", "正在温热一瓶热红酒...", "正在打包你的十二月记忆..."];
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 6;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    percText.innerText = "READY";
+                    enterBtn.classList.add('ready');
+                    quote.innerText = "一切准备就绪，点击开启";
+                }
+                fill.style.height = progress + '%';
+                if(progress < 100) percText.innerText = Math.floor(progress) + '%';
+                if(Math.floor(progress) % 25 === 0 && progress < 90) {
+                    quote.innerText = quotes[Math.floor(progress/25) % quotes.length];
+                }
+            }, 100);
+
+            enterBtn.addEventListener('click', () => {
+                wrapper.style.opacity = '0';
+                wrapper.style.visibility = 'hidden';
+                document.body.classList.add('app-visible');
+                // 解决浏览器对音频/摄像头的自动播放限制
+                if (window.attemptPlayMusicGlobal) window.attemptPlayMusicGlobal();
+                setupCamera(); 
+            });
+        }
+        initLoader();
+
+        // ==========================================
+        // [新增] 侧边贴图交互逻辑
+        // ==========================================
+        const p1 = document.getElementById('sticker-p1');
+        const p2 = document.getElementById('sticker-p2');
+
+        function toggleSticker(clicked, other) {
+            clicked.classList.toggle('active');
+            if(clicked.classList.contains('active')) {
+                // 如果当前被点击的展开了，强制关闭另一个
+                other.classList.remove('active');
+            }
+        }
+
+        // p1 点击事件: 展开 -> 跳转
+        p1.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            if (p1.classList.contains('active')) {
+                // 如果已经是激活(展开)状态，再次点击跳转
+                window.location.href = 'HTML/雨泪.html';
+            } else {
+                // 否则展开
+                toggleSticker(p1, p2);
+            }
+        });
+
+        // p2 点击事件: 展开 -> 跳转
+        p2.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (p2.classList.contains('active')) {
+                // 如果已经是激活(展开)状态，再次点击跳转
+                window.location.href = 'HTML/最后的雨天.html';
+            } else {
+                // 否则展开
+                toggleSticker(p2, p1);
+            }
+        });
+
+        // 点击页面其他地方关闭贴图
+        window.addEventListener('click', () => {
+            if(p1.classList.contains('active')) p1.classList.remove('active');
+            if(p2.classList.contains('active')) p2.classList.remove('active');
+        });
+
+
+        // ==========================================
+        // 原有核心逻辑 (保持原样)
+        // ==========================================
+        const isMobile = false; 
+        const stickerBtn = document.getElementById('signature-sticker');
+        const chatBubble = document.getElementById('chat-bubble');
+        stickerBtn.addEventListener('click', (e) => { e.stopPropagation(); chatBubble.classList.toggle('visible'); });
+        // window click listener merged above
+
+        const CONFIG = {
+            colors: { gold: 0xFFD700, cream: 0xFFFDD0, darkGold: 0xB8860B, candyRed: 0xFF0000, candyWhite: 0xFFFFFF, ribbonWhite: 0xFFFFFF, twinkle: 0xFFFFE0, bellGold: 0xFFD700, wreathGreen: 0x228B22, starYellow: 0xFFFF00, blessStart: 0xFFFFFF, blessEnd: 0x00FF99 },
+            particleCount: 1500, snowCount: 5000, twinkleCount: 350, treeHeight: 80, treeRadius: 30, slideshowInterval: 6000, 
+            cameraLerpFactor: 0.04, lookAtLerpFactor: 0.06, mouseSensitivity: 0.005, handSensitivity: 1.8, handInputSmoothing: 0.15, handDeadzone: 0.005, friction: 0.98, photoFriction: 0.9, autoRotateSpeed: 0.001 
+        };
+
+        let scene, camera, renderer, composer;
+        let treeContainer, ribbonContainer, decoContainer, textContainer; 
+        let ribbonPoints, twinklePoints, particles = [], snowParticles, decoParticles = [], textParticles = []; 
+        let photoTextures = [], photoIndices = [], starMesh;
+        let appState = 0; let isExploded = false, isAutoPlay = false, isTransitioning = false; 
+        let rotateVelocity = 0, photoRotateVelocity = 0, handSmoothedX = null; 
+        let targetCamPos = new THREE.Vector3(0, 40, 110), targetLookAt = new THREE.Vector3(0, 40, 0), currentLookAt = new THREE.Vector3(0, 40, 0); 
+        let activePhotoIndex = -1, lastSlideTime = 0, clickTimer = null, clickCount = 0, isDragging = false, lastMouseX = 0, mouseDownX = 0, mouseDownY = 0;
+        let lastHandRawX = 0.5; let lastGestureTime = 0; 
+
+        const statusMsg = document.getElementById('status-msg');
+        const videoElement = document.getElementById('hud-video');
+        const canvasElement = document.getElementById('hud-canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const hudStatus = document.getElementById('hud-status');
+
+        function getSnowTexture() { const c = document.createElement('canvas'); c.width=32; c.height=32; const ctx = c.getContext('2d'); const g = ctx.createRadialGradient(16,16,0,16,16,16); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,32,32); return new THREE.CanvasTexture(c); }
+        function getBulbTexture() { const c = document.createElement('canvas'); c.width=32; c.height=32; const ctx = c.getContext('2d'); const g = ctx.createRadialGradient(16,16,0,16,16,16); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.4,'rgba(255,255,255,0.8)'); g.addColorStop(0.5,'rgba(255,255,255,0.2)'); g.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,32,32); return new THREE.CanvasTexture(c); }
+        function createPolaroidTexture(img) { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const w=512, h=620, p=35, bp=140; c.width=w; c.height=h; ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,w,h); ctx.filter = 'contrast(1.2) brightness(0.75)'; ctx.strokeStyle='#DDDDDD'; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h); const dw=w-p*2, dh=h-p-bp; const s=Math.max(dw/img.width, dh/img.height); ctx.drawImage(img, (img.width-dw/s)/2, (img.height-dh/s)/2, dw/s, dh/s, p, p, dw, dh); ctx.filter = 'none'; return new THREE.CanvasTexture(c); }
+        function formatTime(s) { if (isNaN(s)) return "00:00"; return `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+
+        function initThree() {
+            scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x050505, 0.002);
+            treeContainer = new THREE.Group(); scene.add(treeContainer);
+            ribbonContainer = new THREE.Group(); treeContainer.add(ribbonContainer);
+            decoContainer = new THREE.Group(); treeContainer.add(decoContainer);
+            textContainer = new THREE.Group(); scene.add(textContainer);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1500);
+            camera.position.set(0, 40, 110); 
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            document.body.appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(CONFIG.colors.gold, 1, 200); pointLight.position.set(0, 50, 20); scene.add(pointLight);
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.4, 0.85);
+            bloomPass.threshold = 0.15; bloomPass.strength = 1.2; bloomPass.radius = 0.5;
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene); composer.addPass(bloomPass);
+            createParticles(); createFineDecorations(); createTopStar(); createSnow(); 
+            createRibbon(); createTwinkles(); createBlessingTextParticles(); initMusicPlayer(); 
+            window.addEventListener('resize', onWindowResize, false);
+            document.getElementById('upload-input').addEventListener('change', handlePhotoUpload);
+            window.addEventListener('mousedown', onMouseDown); window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('touchmove', (e) => {}, {passive: false});
+        }
+
+        function createBlessingTextParticles() {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+            const w=1024, h=512; canvas.width=w; canvas.height=h;
+            ctx.fillStyle='rgba(0,0,0,0)'; ctx.fillRect(0,0,w,h);
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.font='bold 120px "Cinzel", serif'; ctx.fillStyle='#FFFFFF'; ctx.fillText('Merry Christmas', w/2, h/2-50);
+            ctx.font='bold 30px "Noto Serif SC", serif'; ctx.fillText('祝你永远被他人所珍视，见者有份。', w/2, h/2+70);
+            const data = ctx.getImageData(0,0,w,h).data;
+            const geo = new THREE.BufferGeometry(); const pos=[], col=[], siz=[];
+            const c1 = new THREE.Color(CONFIG.colors.blessStart), c2 = new THREE.Color(CONFIG.colors.blessEnd);
+            let minX=w, maxX=0; for(let y=0; y<h; y+=2) for(let x=0; x<w; x+=2) if(data[(y*w+x)*4+3]>100) { if(x<minX)minX=x; if(x>maxX)maxX=x; }
+            const tw = maxX-minX;
+            for(let y=0; y<h; y+=1) { if(y%1!==0) continue; for(let x=0; x<w; x+=1) { if(data[(y*w+x)*4+3]>120) { pos.push((x-w/2)*0.15, -(y-h/2)*0.15+40, 0); const c = c1.clone().lerp(c2, Math.max(0,Math.min(1,(x-minX)/tw))); col.push(c.r,c.g,c.b); siz.push(0.22); } } }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
+            geo.setAttribute('size', new THREE.Float32BufferAttribute(siz,1));
+            const mat = new THREE.PointsMaterial({size:0.22, vertexColors:true, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false});
+            const mesh = new THREE.Points(geo, mat); textContainer.add(mesh);
+            for(let i=0; i<pos.length/3; i++) textParticles.push({vx:pos[i*3], vy:pos[i*3+1], vz:pos[i*3+2]});
+            const attr = mesh.geometry.attributes.position; for(let i=0; i<pos.length/3; i++) attr.setXYZ(i, (Math.random()-0.5)*200-100, (Math.random()-0.5)*150+40, (Math.random()-0.5)*100);
+            mesh.userData = {originalPositions:textParticles, material:mat}; mesh.visible=false;
+        }
+
+        function createFineDecorations() {
+            const matBell = new THREE.PointsMaterial({color:CONFIG.colors.bellGold, size:0.2, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending});
+            const matWreath = new THREE.PointsMaterial({color:CONFIG.colors.wreathGreen, size:0.15, transparent:true, opacity:0.8});
+            const matRed = new THREE.PointsMaterial({color:CONFIG.colors.candyRed, size:0.2});
+            const matStar = new THREE.PointsMaterial({color:CONFIG.colors.starYellow, size:0.2, blending:THREE.AdditiveBlending});
+            const addCloud = (pts, deg, hPct, mat, rot={x:0,y:0,z:0}) => {
+                const geo = new THREE.BufferGeometry().setFromPoints(pts); const mesh = new THREE.Points(geo, mat); const h=hPct*CONFIG.treeHeight, r=(1-hPct)*CONFIG.treeRadius; const a=deg*Math.PI/180, x=Math.cos(a)*(r+2), z=Math.sin(a)*(r+2); mesh.position.set(x,h,z); mesh.rotation.y=Math.atan2(x,z); mesh.rotation.x+=rot.x; mesh.rotation.y+=rot.y; mesh.rotation.z+=rot.z;
+                decoContainer.add(mesh); decoParticles.push({mesh:mesh, originalPos:mesh.position.clone(), explodePos:mesh.position.clone().normalize().multiplyScalar(150)});
+            };
+            const genBell = (cnt, s) => { const p=[]; for(let i=0;i<cnt;i++){const y=Math.random()*2; let r=y<0.2?1.0:1.0-Math.pow((y-0.2)/1.8,0.5)*0.7; const th=Math.random()*6.28; p.push(new THREE.Vector3(Math.cos(th)*r*s+(Math.random()-.5)*.05, y*s+(Math.random()-.5)*.05, Math.sin(th)*r*s+(Math.random()-.5)*.05));} return p; }
+            const genWr = (cnt, r, tr) => { const p=[]; for(let i=0;i<cnt;i++){const u=Math.random()*6.28, v=Math.random()*6.28; p.push(new THREE.Vector3((r+tr*Math.cos(v))*Math.cos(u)+(Math.random()-.5)*.2, (r+tr*Math.cos(v))*Math.sin(u)+(Math.random()-.5)*.2, tr*Math.sin(v)+(Math.random()-.5)*.2));} return p; }
+            const genSt = (cnt, or) => { const p=[], v=[]; for(let i=0;i<10;i++){const r=i%2==0?or:or*0.4, a=i/10*6.28-1.57; v.push(new THREE.Vector3(Math.cos(a)*r, Math.sin(a)*r, 0));} v.push(v[0]); for(let i=0;i<cnt;i++){const idx=Math.floor(Math.random()*10), t=Math.random(); p.push(new THREE.Vector3(THREE.MathUtils.lerp(v[idx].x,v[idx+1].x,t)+(Math.random()-.5)*.15, THREE.MathUtils.lerp(v[idx].y,v[idx+1].y,t)+(Math.random()-.5)*.15, (Math.random()-.5)*.15));} return p; }
+            const bp = genBell(400, 2.5); addCloud(bp,0,0.6,matBell,{x:0,y:0,z:0.2}); addCloud(bp,120,0.45,matBell,{x:0,y:0,z:-0.1}); addCloud(bp,240,0.3,matBell,{x:0,y:0,z:0.1});
+            const wp = genWr(600, 3.5, 1.0); const brp = []; for(let i=0;i<50;i++) brp.push(new THREE.Vector3(Math.cos(Math.random()*6.28)*3.5, Math.sin(Math.random()*6.28)*3.5, 1.0));
+            addCloud(wp,45,0.4,matWreath,{x:-.1,y:0,z:0}); addCloud(brp,45,0.4,matRed,{x:-.1,y:0,z:0}); addCloud(wp,180,0.5,matWreath,{x:-.1,y:0,z:0}); addCloud(brp,180,0.5,matRed,{x:-.1,y:0,z:0}); addCloud(wp,300,0.35,matWreath,{x:-.1,y:0,z:0}); addCloud(brp,300,0.35,matRed,{x:-.1,y:0,z:0});
+            const sp = genSt(250, 3.0); addCloud(sp,0,0.15,matStar); addCloud(sp,90,0.12,matStar,{x:0,y:0,z:-0.1}); addCloud(sp,180,0.15,matStar); addCloud(sp,270,0.12,matStar,{x:0,y:0,z:0.1});
+            const clp=[]; for(let i=0;i<150;i++) clp.push(new THREE.Vector3((Math.random()-.5)*3,(Math.random()-.5)*3,(Math.random()-.5)*3)); addCloud(clp,-30,0.75,matRed); addCloud(clp,150,0.65,matRed);
+        }
+
+        function createParticles() {
+            const gb=new THREE.BoxGeometry(1,1,1), gs=new THREE.SphereGeometry(0.6,16,16), gc=new THREE.CylinderGeometry(0.3,0.3,2,8);
+            const mg=new THREE.MeshStandardMaterial({color:CONFIG.colors.gold, metalness:0.8, roughness:0.2, emissive:CONFIG.colors.darkGold, emissiveIntensity:0.2});
+            const mc=new THREE.MeshStandardMaterial({color:CONFIG.colors.cream, emissive:CONFIG.colors.cream, emissiveIntensity:0.4});
+            const mr=new THREE.MeshStandardMaterial({color:CONFIG.colors.candyRed, emissive:0x440000});
+            for(let i=0; i<CONFIG.particleCount; i++) {
+                const pct=i/CONFIG.particleCount, h=Math.pow(pct,1.8)*CONFIG.treeHeight; const r=(1-Math.pow(pct,1.8))*CONFIG.treeRadius, a=pct*50*Math.PI; const x=Math.cos(a)*r, y=h, z=Math.sin(a)*r; const pos = new THREE.Vector3(x+(Math.random()-.5)*5, y+(Math.random()-.5)*5, z+(Math.random()-.5)*5); const u=Math.random(), v=Math.random(), th=2*Math.PI*u, ph=Math.acos(2*v-1), rad=120*Math.cbrt(Math.random()); const ep = new THREE.Vector3(rad*Math.sin(ph)*Math.cos(th), 45+rad*Math.sin(ph)*Math.sin(th), rad*Math.cos(ph));
+                let m, type; const rn=Math.random(); if(rn>0.85){m=new THREE.Mesh(gb,mg.clone()); type='box';} else if(rn>0.95){m=new THREE.Mesh(gc,mr.clone()); m.rotation.z=Math.random()*3.14; type='candy';} else {m=new THREE.Mesh(gs,mc.clone()); type='sphere';}
+                m.position.copy(pos); m.rotation.set(Math.random()*3, Math.random()*3, 0); treeContainer.add(m); particles.push({mesh:m, treePos:pos, explodePos:ep, type:type, isPhoto:false});
+            }
+        }
+
+        function createTopStar() {
+            const pts=[]; const or=3.5, ir=1.8; for(let i=0;i<16;i++){ const r=i%2==0?or:ir, a=i/16*6.28; pts.push(new THREE.Vector2(Math.cos(a)*r, Math.sin(a)*r));} pts.push(pts[0]); const shp=new THREE.Shape(pts); const geo=new THREE.ExtrudeGeometry(shp,{steps:1,depth:1,bevelEnabled:true,bevelThickness:0.8,bevelSize:0.8,bevelSegments:2}); geo.center(); starMesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:CONFIG.colors.gold,emissive:CONFIG.colors.gold,emissiveIntensity:0.9,metalness:0.9,roughness:0.1})); starMesh.position.set(0,CONFIG.treeHeight+2,0); treeContainer.add(starMesh);
+        }
+
+        function createRibbon() {
+            const cnt=3500, pos=[], siz=[]; for(let i=0;i<cnt;i++){ const t=i/cnt, a=t*Math.PI*9, r=(1-t)*(CONFIG.treeRadius+18), y=t*(CONFIG.treeHeight-2); pos.push(Math.cos(a)*r+(Math.random()-.5)*2, y+(Math.random()-.5), Math.sin(a)*r+(Math.random()-.5)*2); siz.push(Math.random()*.8+.4); } const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.setAttribute('size',new THREE.Float32BufferAttribute(siz,1)); ribbonPoints=new THREE.Points(geo,new THREE.PointsMaterial({color:CONFIG.colors.ribbonWhite,size:0.6,map:getSnowTexture(),transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false})); ribbonContainer.add(ribbonPoints);
+        }
+
+        function createTwinkles() {
+            const pos=[], col=[], spd=[], off=[], pal=[0xFF0000, 0x00FF00, 0xFFD700, 0x4444FF, 0xFFFFFF]; for(let i=0;i<CONFIG.twinkleCount;i++){ const t=Math.pow(Math.random(),1.5), r=(1-t)*(CONFIG.treeRadius+1), a=Math.random()*6.28; pos.push(Math.cos(a)*r, t*CONFIG.treeHeight, Math.sin(a)*r); const c=new THREE.Color(pal[Math.floor(Math.random()*5)]); col.push(c.r,c.g,c.b); spd.push(2+Math.random()*3); off.push(Math.random()*100); } const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); geo.setAttribute('speed',new THREE.Float32BufferAttribute(spd,1)); geo.setAttribute('offset',new THREE.Float32BufferAttribute(off,1)); geo.setAttribute('baseColor',new THREE.Float32BufferAttribute(col,3)); twinklePoints=new THREE.Points(geo,new THREE.PointsMaterial({size:4.5,map:getBulbTexture(),transparent:true,opacity:1,vertexColors:true,blending:THREE.AdditiveBlending,depthWrite:false})); treeContainer.add(twinklePoints);
+        }
+
+        function updateTwinkles() {
+            if(!twinklePoints) return; const t=Date.now()*0.003, col=twinklePoints.geometry.attributes.color, base=twinklePoints.geometry.attributes.baseColor, spd=twinklePoints.geometry.attributes.speed.array, off=twinklePoints.geometry.attributes.offset.array; for(let i=0;i<CONFIG.twinkleCount;i++){ const b=0.2+0.8*Math.pow((Math.sin(t*spd[i]+off[i])+1)/2,2); col.setXYZ(i, base.getX(i)*b, base.getY(i)*b, base.getZ(i)*b); } col.needsUpdate=true;
+        }
+
+        function handlePhotoUpload(e) {
+            const files=e.target.files; if(!files.length) return; activePhotoIndex=-1; photoIndices=[]; Array.from(files).forEach((f,i)=>{ const r=new FileReader(); r.onload=ev=>{ const img=new Image(); img.src=ev.target.result; img.onload=()=>{ const tex=createPolaroidTexture(img), step=Math.floor(particles.length/files.length); let idx=(i*step+Math.floor(Math.random()*20))%particles.length; while(particles[idx].type!=='box' && idx<particles.length-1) idx++; const p=particles[idx]; p.isPhoto=true; p.mesh.material = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, color: 0xAAAAAA }); p.mesh.scale.set(3,3.6,0.05); p.mesh.rotation.set(0,0,0); photoIndices.push(idx); } }; r.readAsDataURL(f); }); showStatus(`${files.length} MEMORIES ADDED`);
+        }
+
+        function createSnow() {
+            const pos=[], vel=[], op=[]; for(let i=0;i<CONFIG.snowCount;i++){ pos.push((Math.random()-.5)*300, Math.random()*200, (Math.random()-.5)*300); vel.push(0.05+Math.random()*0.15); op.push(Math.random());} const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.setAttribute('velocity',new THREE.Float32BufferAttribute(vel,1)); geo.setAttribute('opacity',new THREE.Float32BufferAttribute(op,1)); snowParticles=new THREE.Points(geo,new THREE.PointsMaterial({color:0xFFFFFF,size:0.8,map:getSnowTexture(),transparent:true,opacity:0.8,blending:THREE.AdditiveBlending,depthWrite:false})); scene.add(snowParticles);
+        }
+        function updateSnow() {
+            if(!snowParticles) return; const pos=snowParticles.geometry.attributes.position.array, vel=snowParticles.geometry.attributes.velocity.array; for(let i=0;i<CONFIG.snowCount;i++){ pos[i*3+1]-=vel[i]; if(pos[i*3+1]<-50){ pos[i*3+1]=150; pos[i*3]=(Math.random()-.5)*300; pos[i*3+2]=(Math.random()-.5)*300;}} snowParticles.geometry.attributes.position.needsUpdate=true;
+        }
+
+        function loop() {
+            requestAnimationFrame(loop); TWEEN.update(); updateSnow(); updateTwinkles(); updateSlideshowLoop(); camera.position.lerp(targetCamPos, CONFIG.cameraLerpFactor); currentLookAt.lerp(targetLookAt, CONFIG.lookAtLerpFactor); camera.lookAt(currentLookAt); if(ribbonContainer && appState===0) ribbonContainer.rotation.y-=0.002; if(!isDragging){ if(appState===3) rotateVelocity=0; else { rotateVelocity*=CONFIG.friction; if(appState!==2) rotateVelocity+=(CONFIG.autoRotateSpeed-rotateVelocity)*0.05; treeContainer.rotation.y+=rotateVelocity; } } if(appState===2 && activePhotoIndex!==-1 && particles[photoIndices[activePhotoIndex]]){ const p=particles[photoIndices[activePhotoIndex]]; p.mesh.rotation.y+=photoRotateVelocity; photoRotateVelocity*=CONFIG.photoFriction; } composer.render();
+        }
+        function onWindowResize() { camera.aspect=window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); }
+        function showStatus(t) { statusMsg.innerText=t; statusMsg.style.opacity=1; setTimeout(()=>statusMsg.style.opacity=0, 1500); }
+
+        function initMusicPlayer() {
+            const songs = [ { title: "Jingle Bell", src: "https://file.uhsea.com/2512/4bdf3863d19c3cf3bc010ebfa1075b03DP.mp3" }, { title: "첫 눈(初雪)", src: "https://file.uhsea.com/2512/67b3b2dc68238a0e880b76fcc06b734c9C.mp3" }, { title: "圣诞结", src: "https://file.uhsea.com/2512/86b6a3b531b40934c87503ccffae2ab7SW.mp3" }, { title: "Last Christmas", src: "https://file.uhsea.com/2512/edba46504ac33f67d1deddb9bdf76dbeBK.mp3" }, { title: "クリスマスソング（圣诞颂歌）", src: "https://file.uhsea.com/2512/a404b905e018ef87d4c709bb6ecf67daRW.mp3" }, { title: "圣诞星", src: "https://file.uhsea.com/2512/c358c8da26d623284901ee6daa80498c4J.mp3" }, { title: "All I Want For Christmas Is You", src: "https://file.uhsea.com/2512/ecac730ec7d6a141f24bfceb79c8563f4L.mp3" } ]; let idx=0; const audio=document.getElementById('audio'), playBtn=document.getElementById('play-btn'), playIcon=document.getElementById('play-icon'), pauseIcon=document.getElementById('pause-icon'), title=document.getElementById('song-title'), bar=document.getElementById('progress-bar'), sleigh=document.getElementById('progress-sleigh'), curT=document.getElementById('current-time'), totT=document.getElementById('total-duration'); const updateUI=p=>{ playIcon.style.display=p?'none':'block'; pauseIcon.style.display=p?'block':'none'; }; const load=i=>{ idx=i; title.innerText=songs[i].title; audio.src=songs[i].src; bar.style.width='0%'; sleigh.style.left='0%'; curT.innerText='00:00'; totT.innerText='00:00'; };
+            playBtn.addEventListener('click',e=>{ e.stopPropagation(); if(audio.paused){audio.play().then(()=>updateUI(true)).catch(e => console.log(e));}else{audio.pause(); updateUI(false);} }); document.getElementById('prev-btn').addEventListener('click',e=>{ e.stopPropagation(); idx=(idx-1+songs.length)%songs.length; load(idx); audio.play().then(()=>updateUI(true)); }); document.getElementById('next-btn').addEventListener('click',e=>{ e.stopPropagation(); idx=(idx+1)%songs.length; load(idx); audio.play().then(()=>updateUI(true)); }); document.getElementById('progress-container').addEventListener('click',e=>{ e.stopPropagation(); if(!isNaN(audio.duration)) { const pct = (e.offsetX/e.currentTarget.clientWidth); audio.currentTime = pct * audio.duration; sleigh.style.left = pct * 100 + '%'; } });
+            audio.addEventListener('timeupdate',()=>{ if(!isNaN(audio.duration)){ const pct = (audio.currentTime/audio.duration)*100; bar.style.width=pct+'%'; sleigh.style.left=pct+'%'; curT.innerText=formatTime(audio.currentTime); totT.innerText=formatTime(audio.duration); } }); audio.addEventListener('loadedmetadata',()=>{ if(!isNaN(audio.duration)) totT.innerText=formatTime(audio.duration); }); load(0); 
+            // 封装给Loader调用
+            window.attemptPlayMusicGlobal = function() { if(audio && audio.paused) audio.play().then(()=>updateUI(true)).catch(()=>{}); };
+        }
+
+        async function setupCamera() {
+            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }); videoElement.srcObject = stream; videoElement.onloadedmetadata = () => { videoElement.play(); videoElement.width = videoElement.videoWidth; videoElement.height = videoElement.videoHeight; canvasElement.width = videoElement.videoWidth; canvasElement.height = videoElement.videoHeight; hudStatus.innerText = "系统就绪"; predictLoop(); } } catch(e) { console.error(e); hudStatus.innerText = "摄像头错误"; }
+        }
+        async function predictLoop() { if(videoElement.readyState === 4 && !isTransitioning) { try { await hands.send({image: videoElement}); } catch(e){} } requestAnimationFrame(predictLoop); }
+
+        function onResults(res) {
+            canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); if (!res.multiHandLandmarks || res.multiHandLandmarks.length === 0) { handSmoothedX = null; hudStatus.innerText = "未检测"; hudStatus.style.color = "#FFFFFF"; canvasCtx.restore(); return; } const lm = res.multiHandLandmarks[0]; const wrist = lm[0]; lastHandRawX = wrist.x; for (const landmarks of res.multiHandLandmarks) { drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2}); drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1, radius: 2}); } const middleTip = lm[12]; const handSize = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y); if (handSize < 0.1) { hudStatus.innerText = "距离太远"; canvasCtx.restore(); return; } let rx = wrist.x; if(handSmoothedX===null) handSmoothedX=rx; handSmoothedX=THREE.MathUtils.lerp(handSmoothedX,rx,CONFIG.handInputSmoothing); const isOpen = i => Math.hypot(lm[i].x-lm[0].x, lm[i].y-lm[0].y) > Math.hypot(lm[i-2].x-lm[0].x, lm[i-2].y-lm[0].y); const isThumb = Math.hypot(lm[4].x-lm[17].x, lm[4].y-lm[17].y) > Math.hypot(lm[3].x-lm[17].x, lm[3].y-lm[17].y); const f = [isOpen(8), isOpen(12), isOpen(16), isOpen(20), isThumb]; const isFist = !f[0] && !f[1] && !f[2] && !f[3]; const isV = f[0] && f[1] && !f[2] && !f[3]; const isFive = f[0] && f[1] && f[2] && f[3]; const isPoint = f[0] && !f[1] && !f[2] && !f[3]; const thumbTip = lm[4]; const indexTip = lm[8]; const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y); const middleBase = lm[9]; const handScale = Math.hypot(lm[0].x - middleBase.x, lm[0].y - middleBase.y); const isPinch = pinchDist < (handScale * 0.2); const isOkGesture = isPinch; if(window.attemptPlayMusicGlobal) window.attemptPlayMusicGlobal(); if(window.prevX && handSmoothedX){ const d = handSmoothedX - window.prevX; if(Math.abs(d) > CONFIG.handDeadzone) { if (appState === 0 && isFist) rotateVelocity += -d * CONFIG.handSensitivity; else if (appState === 1 && isFive) rotateVelocity += -d * CONFIG.handSensitivity; else if (appState === 2 && isFive) photoRotateVelocity += -d * CONFIG.handSensitivity; } } if (isOkGesture) hudStatus.innerText = "识别: OK手势 (切图)"; else if (isFive) hudStatus.innerText = "识别: 五指张开 (扩散)"; else if (isFist) hudStatus.innerText = "识别: 握拳 (聚合)"; else if (isV) hudStatus.innerText = "识别: 剪刀手 (祝福)"; else if (isPoint) hudStatus.innerText = "识别: 单指 (画廊)"; else hudStatus.innerText = "检测中..."; if(isFist) { if(appState===3) exitBlessingSequence(true); else if(appState!==0) triggerState('TREE'); } else if(isV) { if(appState===1) triggerState('BLESSING'); } else if(isPoint) { if (appState === 1) advancePhotoManual(); } else if(isFive) { if (appState === 3) exitBlessingSequence(false); else if (appState === 0) triggerState('EXPLODE'); } else if (isOkGesture) { if (appState === 2) { const now = Date.now(); if (now - lastGestureTime > 1500) { advancePhotoManual(); lastGestureTime = now; } } } window.prevX = handSmoothedX; canvasCtx.restore();
+        }
+
+        const hands = new Hands({ locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}` });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.85, minTrackingConfidence: 0.85 });
+        hands.onResults(onResults);
+
+        function onMouseDown(e) { if(e.target.closest('#bottom-left-ui') || e.target.closest('#top-left-ui')) return; if(window.attemptPlayMusicGlobal) window.attemptPlayMusicGlobal(); if(isMobile) return; isDragging=false; mouseDownX=e.clientX; mouseDownY=e.clientY; lastMouseX=e.clientX; }
+        function onMouseMove(e) { if(isMobile) return; if(e.buttons===1){ if(e.target.closest('#bottom-left-ui') || e.target.closest('#top-left-ui')) return; if(Math.hypot(e.clientX-mouseDownX,e.clientY-mouseDownY)>5) isDragging=true; if(isDragging){ const dx=e.clientX-lastMouseX; if(appState===2)photoRotateVelocity+=dx*CONFIG.mouseSensitivity*0.5; else rotateVelocity=dx*CONFIG.mouseSensitivity; } lastMouseX=e.clientX; } }
+        function onMouseUp(e) { if(isMobile) return; if(isDragging){ isDragging=false; return; } if(e.target.closest('#bottom-left-ui') || e.target.closest('#top-left-ui')) return; clickCount++; clearTimeout(clickTimer); clickTimer=setTimeout(()=>{ if(clickCount===1)onSingleClick(); else if(clickCount===2)onDoubleClick(); else if(clickCount===3)onTripleClick(); clickCount=0; clickTimer=null; },280); }
+        function onDoubleClick() { if(isMobile)return; if(appState===0)triggerState('EXPLODE'); else if(appState===3)exitBlessingSequence(true); else triggerState('TREE'); }
+        function onSingleClick() { if(isMobile)return; if(appState!==0&&appState!==3){isAutoPlay=false; advancePhotoManual();} }
+        function onTripleClick() { if(isMobile)return; if(appState===1)triggerState('BLESSING'); }
+        function triggerState(s) { resetPhotoScale(); activePhotoIndex=-1; TWEEN.removeAll(); if(s==='TREE') { if(appState===0) return; appState=0; showStatus("ASSEMBLE"); isExploded=false; const tm=textContainer.children[0]; if(tm) new TWEEN.Tween(tm.material).to({opacity:0},800).onComplete(()=>tm.visible=false).start(); particles.forEach(p=>{ p.mesh.visible=true; new TWEEN.Tween(p.mesh.position).to(p.treePos,1500).easing(TWEEN.Easing.Exponential.InOut).start(); new TWEEN.Tween(p.mesh.rotation).to({x:0,y:0,z:0},1500).start(); if (p.isPhoto) { new TWEEN.Tween(p.mesh.scale).to({x:3, y:3.6, z:0.05}, 1500).start(); } if(p.mesh.material.opacity<1)new TWEEN.Tween(p.mesh.material).to({opacity:1},1000).start(); }); decoParticles.forEach(d=>{ d.mesh.visible=true; new TWEEN.Tween(d.mesh.position).to(d.originalPos,1500).easing(TWEEN.Easing.Exponential.InOut).start(); }); if(ribbonPoints){ribbonPoints.visible=true; new TWEEN.Tween(ribbonPoints.material).to({opacity:0.9},1500).start();} if(twinklePoints)twinklePoints.visible=true; targetCamPos.set(0,40,110); targetLookAt.set(0,40,0); } else if(s==='EXPLODE') { if(appState===1) return; appState=1; showStatus("SCATTER"); isExploded=true; particles.forEach(p=>{ new TWEEN.Tween(p.mesh.position).to(p.explodePos,2000).easing(TWEEN.Easing.Exponential.Out).start(); new TWEEN.Tween(p.mesh.rotation).to({x:Math.random()*6,y:Math.random()*6,z:Math.random()*6},2000).start(); }); decoParticles.forEach(d=>{ new TWEEN.Tween(d.mesh.position).to(d.explodePos,2000).easing(TWEEN.Easing.Exponential.Out).start(); }); if(ribbonPoints)ribbonPoints.visible=false; if(twinklePoints)twinklePoints.visible=false; targetCamPos.set(0,40,110); } else if(s==='BLESSING') { appState=3; showStatus("BLESSINGS"); rotateVelocity=0; const cr=treeContainer.rotation.y, wx=Math.cos(-cr), wz=Math.sin(-cr); [...particles,...decoParticles].forEach(o=>{ const m=o.mesh||o; const d=500+Math.random()*200; new TWEEN.Tween(m.position).to({x:m.position.x+wx*d,y:m.position.y+(Math.random()-.5)*100,z:m.position.z+wz*d},2500).easing(TWEEN.Easing.Cubic.In).delay(Math.random()*800).start(); }); const tm=textContainer.children[0]; if(tm){ tm.visible=true; tm.material.opacity=0; new TWEEN.Tween(tm.material).to({opacity:1},2000).delay(1000).start(); const at=tm.geometry.attributes.position, tg=tm.userData.originalPositions, c=tg.length, pg={t:0}; new TWEEN.Tween(pg).to({t:1},3500).easing(TWEEN.Easing.Quintic.Out).delay(1200).onUpdate(()=>{ for(let i=0;i<c;i++) at.setXYZ(i, tg[i].vx*pg.t+(1-pg.t)*(Math.random()-.5)*400, tg[i].vy*pg.t+(1-pg.t)*40, tg[i].vz*pg.t); at.needsUpdate=true; }).start(); } targetCamPos.set(0,40,140); } }
+        function exitBlessingSequence(auto) { if(isTransitioning) return; isTransitioning=true; appState=1; showStatus(auto?"REWIND & ASSEMBLE":"REWIND"); TWEEN.removeAll(); const tm=textContainer.children[0]; if(tm) new TWEEN.Tween(tm.material).to({opacity:0},1000).onComplete(()=>tm.visible=false).start(); particles.forEach(p=>{ new TWEEN.Tween(p.mesh.position).to(p.explodePos,1500).easing(TWEEN.Easing.Cubic.Out).start(); }); decoParticles.forEach(d=>{ new TWEEN.Tween(d.mesh.position).to(d.explodePos,1500).easing(TWEEN.Easing.Cubic.Out).start(); }); targetCamPos.set(0,40,110); setTimeout(()=>{ isTransitioning=false; if(auto) triggerState('TREE'); },1600); }
+        function advancePhotoManual() { if(!photoIndices.length){showStatus("NO PHOTOS");return;} if(appState!==2){appState=2;activePhotoIndex=-1;rotateVelocity=0;} focusOnPhoto((activePhotoIndex+1)%photoIndices.length); }
+        function updateSlideshowLoop() { if(appState!==2||!isAutoPlay||!photoIndices.length)return; if(Date.now()-lastSlideTime>CONFIG.slideshowInterval) focusOnPhoto((activePhotoIndex+1)%photoIndices.length); }
+        function focusOnPhoto(idx) { if(idx===activePhotoIndex) return; resetPhotoScale(); activePhotoIndex=idx; lastSlideTime=Date.now(); const p=particles[photoIndices[idx]]; photoRotateVelocity=0; const wp=new THREE.Vector3(); p.mesh.getWorldPosition(wp); new TWEEN.Tween(p.mesh.scale).to({x:8,y:9.6,z:0.05},600).easing(TWEEN.Easing.Back.Out).start(); const d=new THREE.Vector3(wp.x,0,wp.z).normalize(), f=wp.clone().add(d.multiplyScalar(20)); f.y=wp.y; targetCamPos.copy(f); targetLookAt.copy(wp); new TWEEN.Tween(p.mesh.rotation).to({x:0,y:Math.atan2(wp.x,wp.z),z:0},800).start(); showStatus(`MEMORY ${idx+1}`); }
+        function resetPhotoScale() { if(activePhotoIndex!==-1 && particles[photoIndices[activePhotoIndex]]) new TWEEN.Tween(particles[photoIndices[activePhotoIndex]].mesh.scale).to({x:3,y:3.6,z:0.05},500).start(); }
+
+        initThree(); loop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>最后的雨天</title>
+    <style>
+        body { 
+            background-color: #B6DEE5; 
+            margin: 0; 
+            overflow: hidden; 
+            padding: 0;
+            cursor: pointer;
+        }
+        canvas { 
+            display: block; 
+            background-color: #B6DEE5; 
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // --- 音效与音乐系统 ---
+    let audioCtx = null;
+    let isBgmStarted = false;
+    
+    // 初始化背景音乐
+    const bgm = new Audio('https://file.uhsea.com/2512/eacff7ec77dfb4d384aa6d3eec23323e2G.mp3');
+    bgm.loop = true; // 循环播放
+
+    function playBubbleSound() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'sine';
+        const baseFreq = 180 + Math.random() * 120; 
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.15);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, now);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.02); 
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    const CONFIG = {
+        fontSize: 20,
+        charSpace: 13,
+        lineSpace: 20,
+        margin: 20,
+        rate: 0.15,          
+        radius: 70,        
+        power: 12,         
+        chars: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        respawnTime: 120,  
+        friction: 0.95     
+    };
+
+    let particles = [];
+    const cache = {}; 
+
+    function preRender() {
+        const colors = {
+            white: '#FFFFFF',
+            blue: '#1976D2',
+            orange: '#f3a361'
+        };
+        CONFIG.chars.split('').forEach(char => {
+            cache[char] = {};
+            Object.keys(colors).forEach(colorKey => {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = CONFIG.fontSize * 1.5;
+                offCanvas.height = CONFIG.fontSize * 1.5;
+                const offCtx = offCanvas.getContext('2d');
+                offCtx.fillStyle = colors[colorKey];
+                offCtx.font = `${CONFIG.fontSize}px monospace`;
+                offCtx.textAlign = 'center';
+                offCtx.textBaseline = 'middle';
+                offCtx.fillText(char, offCanvas.width/2, offCanvas.height/2);
+                cache[char][colorKey] = offCanvas;
+            });
+        });
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        init();
+    }
+
+    class Particle {
+        constructor(x, y) {
+            this.originX = x;
+            this.originY = y;
+            this.reset();
+        }
+
+        reset() {
+            this.x = this.originX;
+            this.y = this.originY;
+            this.char = CONFIG.chars[Math.floor(Math.random() * CONFIG.chars.length)];
+            this.vx = 0;
+            this.vy = 0;
+            this.angle = 0;
+            this.va = 0;
+            this.opacity = 0;
+            this.state = 'FADING_IN';
+            this.colorType = 'white';
+            this.timer = 0;
+        }
+
+        update() {
+            if (this.state === 'FADING_IN') {
+                this.opacity += 0.05;
+                if (this.opacity >= 1) { this.opacity = 1; this.state = 'IDLE'; }
+            } else if (this.state === 'EXPLODED') {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.va;
+                this.vx *= CONFIG.friction;
+                this.vy *= CONFIG.friction;
+                this.va *= CONFIG.friction;
+                
+                this.timer++;
+                if (this.timer > CONFIG.respawnTime) {
+                    this.opacity -= 0.02;
+                    if (this.opacity <= 0) this.reset();
+                }
+            }
+        }
+
+        draw() {
+            if (this.opacity <= 0) return;
+            ctx.globalAlpha = this.opacity;
+            const img = cache[this.char][this.colorType];
+            if (this.angle === 0) {
+                ctx.drawImage(img, this.x - img.width/2, this.y - img.height/2);
+            } else {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.drawImage(img, -img.width/2, -img.height/2);
+                ctx.restore();
+            }
+        }
+
+        explode(ex, ey, type) {
+            const dx = this.x - ex;
+            const dy = this.y - ey;
+            if (Math.abs(dx) > CONFIG.radius || Math.abs(dy) > CONFIG.radius) return;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < CONFIG.radius) {
+                this.state = 'EXPLODED';
+                this.colorType = type;
+                this.timer = 0;
+                const force = (1 - dist / CONFIG.radius) * CONFIG.power;
+                const randomAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
+                this.vx = Math.cos(randomAngle) * force;
+                this.vy = Math.sin(randomAngle) * force;
+                this.va = (Math.random() - 0.5) * 0.4;
+            }
+        }
+    }
+
+    function init() {
+        particles = [];
+        for (let y = CONFIG.margin; y < canvas.height - CONFIG.margin; y += CONFIG.lineSpace) {
+            for (let x = CONFIG.margin; x < canvas.width - CONFIG.margin; x += CONFIG.charSpace) {
+                particles.push(new Particle(x, y));
+            }
+        }
+    }
+
+    function animate() {
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#B6DEE5';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (Math.random() < CONFIG.rate) {
+            const rx = Math.random() * canvas.width;
+            const ry = Math.random() * canvas.height;
+            for(let i=0; i<particles.length; i++) {
+                particles[i].explode(rx, ry, 'blue');
+            }
+        }
+
+        for(let i=0; i<particles.length; i++) {
+            const p = particles[i];
+            p.update();
+            p.draw();
+        }
+        requestAnimationFrame(animate);
+    }
+
+    preRender();
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    // 鼠标点击触发
+    canvas.addEventListener('mousedown', (e) => {
+        // 第一次点击触发音乐播放
+        if (!isBgmStarted) {
+            bgm.play().catch(err => console.log("音乐播放被拦截:", err));
+            isBgmStarted = true;
+        }
+
+        playBubbleSound();
+        for(let i=0; i<particles.length; i++) {
+            particles[i].explode(e.clientX, e.clientY, 'orange');
+        }
+    });
+
+</script>
+</body>
+</html>
